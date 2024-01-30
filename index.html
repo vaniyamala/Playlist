@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML Audio Player</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #e8f4ea;
+            font-family: Arial, sans-serif;
+        }
+
+        #container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+
+        div {
+            background-color: #c3ebd7;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #316666;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 12px;
+            margin: 8px;
+            border-radius: 6px;
+            transition: background-color 0.3s ease;
+        }
+
+        li:hover {
+            background-color: #92d1c9;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            color: #fff;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        #audioPlayer {
+            width: 100%;
+        }
+
+        p {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <input type="file" accept="audio/*" id="audioFileInput" />
+        
+        <div>
+            <h2>Playlist</h2>
+            <ul id="playlist"></ul>
+        </div>
+
+        <div>
+            <h2>Now Playing</h2>
+            <p id="nowPlaying"></p>
+            <audio controls id="audioPlayer" onended="playNext()">
+            </audio>
+        </div>
+    </div>
+
+
+    <script>
+        document.getElementById('audioFileInput').addEventListener('change', handleFileChange);
+
+        function handleFileChange(event) {
+            const fileInput = event.target;
+            const files = fileInput.files;
+
+            if (files.length > 0) {
+                const playlist = getPlaylist();
+                const track = {
+                    name: files[0].name,
+                    src: URL.createObjectURL(files[0])
+                };
+
+                playlist.push(track);
+                setPlaylist(playlist);
+                playTrack(track);
+            }
+        }
+
+        function playTrack(track) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = track.src;
+            document.getElementById('nowPlaying').innerText = track.name;
+
+            localStorage.setItem('currentTrack', JSON.stringify(track));
+        }
+
+        function playNext() {
+            const playlist = getPlaylist();
+            const currentTrackIndex = playlist.findIndex(track => track.src === document.getElementById('audioPlayer').src);
+
+            if (currentTrackIndex !== -1 && currentTrackIndex < playlist.length - 1) {
+                const nextTrack = playlist[currentTrackIndex + 1];
+                playTrack(nextTrack);
+            } else {
+                localStorage.removeItem('currentTrack');
+            }
+        }
+
+        function deleteTrack(index) {
+            const playlist = getPlaylist();
+            playlist.splice(index, 1);
+            setPlaylist(playlist);
+
+            // If deleting the currently playing track, stop playback
+            const audioPlayer = document.getElementById('audioPlayer');
+            if (audioPlayer.src === playlist[index].src) {
+                audioPlayer.pause();
+                audioPlayer.currentTime = 0;
+            }
+        }
+
+        function getPlaylist() {
+            const storedPlaylist = localStorage.getItem('playlist');
+            return storedPlaylist ? JSON.parse(storedPlaylist) : [];
+        }
+
+        function setPlaylist(playlist) {
+            localStorage.setItem('playlist', JSON.stringify(playlist));
+
+            const playlistElement = document.getElementById('playlist');
+            playlistElement.innerHTML = '';
+            playlist.forEach((track, index) => {
+                const listItem = document.createElement('li');
+                listItem.innerText = track.name;
+
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'delete-btn';
+                deleteButton.innerText = 'Delete';
+                deleteButton.addEventListener('click', () => deleteTrack(index));
+
+                listItem.appendChild(deleteButton);
+                listItem.addEventListener('click', () => playTrack(track));
+
+                playlistElement.appendChild(listItem);
+            });
+        }
+
+        window.addEventListener('load', () => {
+            const storedTrack = localStorage.getItem('currentTrack');
+            if (storedTrack) {
+                const track = JSON.parse(storedTrack);
+                playTrack(track);
+            }
+        });
+    </script>
+</body>
+</html>
